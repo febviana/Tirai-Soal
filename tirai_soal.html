@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tirai Soal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Poppins:wght@500;600;700;800&family=Nunito+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-deep: #14101f;
+    --curtain: #7a1e2b;
+    --curtain-dark: #5a141e;
+    --curtain-light: #9c2c3a;
+    --gold: #d4af37;
+    --gold-soft: #e9cf7a;
+    --cream: #fbf3e3;
+    --ink: #2b1b1f;
+    --ink-soft: #5a4650;
+    --correct: #2f9e63;
+    --correct-dark: #1f7a4a;
+    --wrong: #c53c3c;
+    --wrong-dark: #96262a;
+  }
+  *{ box-sizing: border-box; }
+  body{
+    margin:0;
+    min-height:100vh;
+    background: radial-gradient(ellipse at top, #241a3a 0%, var(--bg-deep) 55%, #0d0a16 100%);
+    font-family: 'Nunito Sans', sans-serif;
+    color: var(--cream);
+    padding: 32px 20px 80px;
+    position: relative;
+    overflow-x: hidden;
+  }
+  .spotlight{
+    position: fixed; top:-20%; left:50%; width:900px; height:900px;
+    transform: translateX(-50%);
+    background: radial-gradient(circle, rgba(212,175,55,0.10) 0%, transparent 65%);
+    pointer-events:none; z-index:0;
+  }
+  header{ text-align:center; max-width:780px; margin:0 auto 34px; position:relative; z-index:1; }
+  .eyebrow{ font-size:12px; letter-spacing:.28em; text-transform:uppercase; color:var(--gold-soft); font-weight:700; margin-bottom:10px; }
+  h1{ font-family:'Poppins',sans-serif; font-size:clamp(26px,4.2vw,42px); font-weight:800; margin:0 0 10px; line-height:1.15; }
+  h1 em{ font-style:normal; color:var(--gold); }
+  .subtitle{ color:#cfc4de; font-size:14.5px; line-height:1.6; margin:0 auto; max-width:580px; }
+
+  .stage{ max-width:1180px; margin:0 auto; position:relative; z-index:1; }
+  .grid{ display:grid; grid-template-columns: repeat(auto-fill, minmax(70px,1fr)); gap:10px; }
+
+  .curtain-tile{
+    position:relative; aspect-ratio: 1/1.1; border-radius:8px; cursor:pointer; overflow:hidden;
+    background: linear-gradient(160deg, var(--curtain-light), var(--curtain) 55%, var(--curtain-dark));
+    box-shadow: 0 6px 14px rgba(0,0,0,.35), inset 0 0 0 1px rgba(212,175,55,.25);
+    transition: transform .15s ease, box-shadow .15s ease;
+  }
+  .curtain-tile.tile-in{
+    animation: tileIn .35s ease backwards;
+  }
+  @keyframes tileIn{
+    0%{ opacity:0; transform: translateY(10px) scale(.85); }
+    100%{ opacity:1; transform: translateY(0) scale(1); }
+  }
+  .curtain-tile::before{
+    content:""; position:absolute; inset:0;
+    background-image: repeating-linear-gradient(90deg, rgba(0,0,0,.16) 0px, rgba(0,0,0,.16) 5px, rgba(255,255,255,.05) 5px, rgba(255,255,255,.05) 10px);
+  }
+  .curtain-tile::after{ content:""; position:absolute; top:0;left:0;right:0; height:10px; background:var(--gold); }
+  .curtain-tile:hover{ transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,.45), inset 0 0 0 1px rgba(212,175,55,.5); }
+  .curtain-tile .num{
+    position:relative; z-index:2; width:100%; height:100%; display:flex; align-items:center; justify-content:center;
+    font-family:'Playfair Display',serif; font-weight:700; font-size:18px; color:var(--gold-soft);
+    text-shadow: 0 2px 4px rgba(0,0,0,.5);
+  }
+  .curtain-tile.graded{ cursor:default; }
+  .curtain-tile.graded:hover{ transform:none; box-shadow: 0 6px 14px rgba(0,0,0,.35); }
+  .curtain-tile.correct{ background: linear-gradient(160deg, var(--correct), var(--correct-dark) 70%); opacity:.85; }
+  .curtain-tile.correct::after{ background:#bdf2d3; }
+  .curtain-tile.correct .num{ color:#eafff3; }
+  .curtain-tile.wrong{ background: linear-gradient(160deg, var(--wrong), var(--wrong-dark) 70%); opacity:.85; }
+  .curtain-tile.wrong::after{ background:#ffd2d2; }
+  .curtain-tile.wrong .num{ color:#fff0f0; }
+
+  .reset-row{ display:flex; justify-content:center; margin-top: 30px; position:relative; z-index:1; }
+  button.ctrl{
+    font-family:'Nunito Sans',sans-serif; font-weight:700; font-size:13.5px;
+    border-radius:999px; padding:10px 22px; border:1px solid rgba(212,175,55,0.45);
+    background:transparent; color:var(--gold-soft); cursor:pointer; transition:.2s;
+  }
+  button.ctrl:hover{ background: rgba(212,175,55,0.12); }
+  button.ctrl:active{ transform: scale(.96); }
+
+  .overlay{
+    position:fixed; inset:0; background:rgba(10,7,17,.78); backdrop-filter: blur(2px);
+    display:none; align-items:center; justify-content:center; z-index:50; padding:24px;
+  }
+  .overlay.active{ display:flex; }
+
+  .stage-frame{
+    position:relative; width:min(660px,100%); background:var(--cream); border-radius:14px;
+    box-shadow: 0 30px 60px rgba(0,0,0,.5); overflow:hidden;
+    transform: scale(.92); opacity:0; animation: popIn .35s ease forwards;
+  }
+  @keyframes popIn{ to{ transform:scale(1); opacity:1; } }
+  .stage-frame.shake{ animation: shakeIt .5s ease; }
+  @keyframes shakeIt{
+    0%,100%{ transform: translateX(0); }
+    15%{ transform: translateX(-10px) rotate(-1deg); }
+    30%{ transform: translateX(9px) rotate(1deg); }
+    45%{ transform: translateX(-7px); }
+    60%{ transform: translateX(6px); }
+    75%{ transform: translateX(-4px); }
+    90%{ transform: translateX(2px); }
+  }
+
+  .curtain-panel{
+    position:absolute; top:0; bottom:0; width:52%;
+    background: linear-gradient(120deg, var(--curtain-light), var(--curtain) 60%, var(--curtain-dark));
+    z-index:5; box-shadow: 0 0 30px rgba(0,0,0,.4);
+  }
+  .curtain-panel::before{
+    content:""; position:absolute; inset:0;
+    background-image: repeating-linear-gradient(90deg, rgba(0,0,0,.18) 0px, rgba(0,0,0,.18) 8px, rgba(255,255,255,.06) 8px, rgba(255,255,255,.06) 16px);
+  }
+  .curtain-panel.left{ left:0; border-radius:14px 0 0 14px; transform-origin:left; animation: openLeft .6s .15s ease forwards; }
+  .curtain-panel.right{ right:0; border-radius:0 14px 14px 0; transform-origin:right; animation: openRight .6s .15s ease forwards; }
+  @keyframes openLeft{ to{ transform: translateX(-105%); } }
+  @keyframes openRight{ to{ transform: translateX(105%); } }
+
+  .card-content{ position:relative; padding: 44px 38px 32px; text-align:center; }
+  .card-number{ font-family:'Poppins',sans-serif; font-size:13px; letter-spacing:.22em; text-transform:uppercase; color:#b08a3a; font-weight:700; margin-bottom:14px; }
+  .card-question{ font-family:'Poppins',sans-serif; font-size: clamp(18px,2.5vw,23px); font-weight:600; color:var(--ink); line-height:1.5; margin-bottom:6px; }
+  .card-image{
+    display:none; max-width:100%; max-height:220px; object-fit:contain;
+    border-radius:10px; margin: 4px auto 16px; box-shadow: 0 6px 16px rgba(0,0,0,.18);
+  }
+  .answer-label{
+    font-family:'Nunito Sans',sans-serif; font-size:11px; font-weight:800; letter-spacing:.16em;
+    text-transform:uppercase; color:#b08a3a; margin-bottom:6px;
+  }
+  .extra-line{
+    font-family:'Nunito Sans',sans-serif; font-size:19px; font-weight:800; color:var(--ink);
+    background: linear-gradient(120deg, #fff3c4, #ffe89a); border:2px solid var(--gold);
+    box-shadow: 0 4px 12px rgba(212,175,55,.25);
+    padding:14px 18px; border-radius:10px;
+    margin: 16px 0 4px; text-align:left; display:none; line-height:1.5;
+  }
+  .answer-image{
+    display:none; max-width:100%; max-height:200px; object-fit:contain;
+    border-radius:8px; margin: 10px 0 2px; border:2px solid rgba(212,175,55,.5);
+    box-shadow: 0 4px 10px rgba(0,0,0,.15);
+  }
+  .card-actions{ margin-top:22px; display:flex; justify-content:center; gap:10px; flex-wrap:wrap; }
+  .grade-actions{ margin-top: 16px; display:none; justify-content:center; gap:12px; }
+  .btn{ font-family:'Nunito Sans',sans-serif; font-weight:800; font-size:13.5px; padding:11px 22px; border-radius:999px; border:none; cursor:pointer; transition: transform .12s ease, opacity .12s ease; }
+  .btn:active{ transform: scale(.96); }
+  .btn:disabled{ opacity:.5; cursor:not-allowed; }
+  .btn-check{ background: var(--curtain); color: var(--cream); font-size:14.5px; padding:12px 30px; }
+  .btn-check:hover{ opacity:.9; }
+  .btn-correct{ background: var(--correct); color:#fff; font-size:14.5px; padding:12px 26px; }
+  .btn-correct:hover{ opacity:.9; }
+  .btn-wrong{ background: var(--wrong); color:#fff; font-size:14.5px; padding:12px 26px; }
+  .btn-wrong:hover{ opacity:.9; }
+  .btn-close{ position:absolute; top:14px; right:16px; background:none; border:none; font-size:20px; color:var(--ink-soft); cursor:pointer; z-index:20; }
+
+  footer{ text-align:center; margin-top:40px; color:#8f83a5; font-size:12.5px; position:relative; z-index:1; }
+
+  .result-flash{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    z-index:15; pointer-events:none; opacity:0;
+  }
+  .result-flash.show{ animation: flashPop 2.6s ease forwards; }
+  @keyframes flashPop{
+    0%{ opacity:0; transform: scale(.4) rotate(-8deg); }
+    15%{ opacity:1; transform: scale(1.15) rotate(3deg); }
+    25%{ transform: scale(1) rotate(0deg); }
+    85%{ opacity:1; transform: scale(1) rotate(0deg); }
+    100%{ opacity:0; transform: scale(1.05); }
+  }
+  .stamp{
+    font-family:'Playfair Display', serif; font-weight:800; font-size:64px;
+    padding: 10px 34px; border-radius: 16px; border: 6px solid currentColor;
+    transform: rotate(-6deg); letter-spacing: 0.03em;
+  }
+  .stamp.correct-stamp{ color: var(--correct); background: rgba(47,158,99,0.08); }
+  .stamp.wrong-stamp{ color: var(--wrong); background: rgba(197,60,60,0.08); }
+
+  .confetti-piece{
+    position:fixed; top:-10px; width:9px; height:14px; z-index:60; pointer-events:none;
+    animation-name: confettiFall; animation-timing-function: ease-in; animation-fill-mode: forwards;
+  }
+  @keyframes confettiFall{
+    0%{ transform: translateY(0) rotate(0deg); opacity:1; }
+    100%{ transform: translateY(100vh) rotate(540deg); opacity:0.2; }
+  }
+
+  /* Toast notifikasi (misalnya untuk konfirmasi reset) */
+  .toast{
+    position: fixed;
+    left: 50%;
+    bottom: 34px;
+    transform: translateX(-50%) translateY(20px);
+    background: linear-gradient(160deg, var(--curtain-light), var(--curtain-dark));
+    color: var(--cream);
+    border: 1.5px solid var(--gold);
+    box-shadow: 0 10px 28px rgba(0,0,0,.45);
+    padding: 14px 26px;
+    border-radius: 999px;
+    font-family: 'Nunito Sans', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: .01em;
+    z-index: 80;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .25s ease, transform .25s ease;
+  }
+  .toast.show{
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  @media (max-width:480px){
+    .grid{ grid-template-columns: repeat(auto-fill, minmax(56px,1fr)); gap:8px; }
+    .curtain-tile .num{ font-size:15px; }
+    .card-content{ padding: 36px 20px 26px; }
+    .grade-actions{ flex-direction: column; align-items: stretch; }
+    .stamp{ font-size:40px; padding:8px 18px; }
+    .toast{ font-size:13px; padding:12px 20px; width: calc(100% - 40px); text-align:center; }
+  }
+</style>
+</head>
+<body>
+
+<div class="spotlight"></div>
+
+<header>
+  <div class="eyebrow">Sebelum Ulangan Harian</div>
+  <h1>Uji Pemahaman <em>Bab 1</em><br>Array/List &amp; Fungsi</h1>
+  <p class="subtitle">Silahkan pilih tirai lalu jawab pertanyaannya!</p>
+</header>
+
+<div class="stage">
+  <div class="grid" id="grid"></div>
+</div>
+
+<div class="reset-row">
+  <button class="ctrl" id="resetBtn">Reset Semua Tirai</button>
+</div>
+
+<footer>Dibuat untuk sesi review Informatika · Bab 1: Menggunakan Array/List dan Fungsi</footer>
+
+<div class="overlay" id="overlay">
+  <div class="stage-frame" id="stageFrame">
+    <div class="curtain-panel left"></div>
+    <div class="curtain-panel right"></div>
+    <button class="btn-close" id="closeBtn">✕</button>
+    <div class="result-flash" id="resultFlash"></div>
+    <div class="card-content">
+      <div class="card-number" id="cardNumber">SOAL NO. 1</div>
+      <div class="card-question" id="cardQuestion">Pertanyaan akan muncul di sini.</div>
+      <img class="card-image" id="cardImage" alt="Gambar soal">
+      <div class="extra-line" id="cardAnswer">
+        <div class="answer-label">Kunci Jawaban</div>
+        <div id="cardAnswerText"></div>
+        <img class="answer-image" id="answerImage" alt="Gambar jawaban">
+      </div>
+      <div class="card-actions" id="checkRow">
+        <button class="btn btn-check" id="checkBtn">Cek Jawaban</button>
+      </div>
+      <div class="grade-actions" id="gradeRow">
+        <button class="btn btn-correct" id="correctBtn">Benar</button>
+        <button class="btn btn-wrong" id="wrongBtn">Salah</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const questions = [
+  {q:"Apa itu array/list?", a:"Struktur data untuk menyimpan sekumpulan data dalam satu variabel, dengan tiap data memiliki posisi (indeks)"},
+  {q:"Berikan contoh situasi ketika indeks negatif lebih menguntungkan digunakan dibandingkan indeks positif!", a:"Indeks negatif lebih menguntungkan saat kita ingin mengambil elemen dari akhir list tanpa perlu tahu atau menghitung panjang listnya terlebih dahulu"},
+  {q:"Dengan tanda apa list dituliskan dalam Python?", a:"Tanda kurung siku [ ]"},
+  {q:"Apa yang dimaksud dengan indeks?", a:"Posisi atau urutan tiap elemen di dalam list"},
+  {q:"Indeks pertama pada list di Python dimulai dari angka berapa?", a:"0 (nol)"},
+  {q:"Apa itu IndexError?", a:"IndexError adalah kesalahan yang muncul ketika kita mencoba mengakses indeks yang tidak tersedia/di luar jangkauan panjang list"},
+  {q:"Sebutkan karakteristik array/list!", a:"Dapat menyimpan lebih dari satu data di dalam variabel, data dapat diakses berdasarkan indeks, urutan data tersimpan sesuai urutan saat dimasukkan"},
+  {q:"Apakah list di Python boleh berisi campuran tipe data seperti angka dan teks sekaligus?", a:"Boleh, list Python bisa menyimpan berbagai jenis data sekaligus"},
+  {q:"buah = [\"apel\", \"jeruk\", \"mangga\", \"pisang\", \"anggur\"] Apa hasil dari buah[0]?", a:"\"apel\""},
+  {q:"Apa perbedaan antara built-in function dan function dari module? Berikan masing-masing 2 contoh!", a:"Built-in function: sudah tersedia langsung di Python dan tidak perlu import. Contoh: sum(), len(), max(), min() Function dari module: berada di dalam module tertentu dan HARUS import untuk mengaksesnya. Contoh: math.sqrt(), math.ceil(), math.floor(), math.trunc()"},
+  {q:"Apa itu indeks negatif?", a:"Cara mengakses elemen list dari arah belakang"},
+  {q:"Indeks negatif dimulai dari angka berapa?", a:"-1"},
+  {q:"buah = [\"apel\", \"jeruk\", \"mangga\", \"pisang\", \"anggur\"], apa hasil buah[-6]?", a:"IndexError"},
+  {q:"Kenapa penomoran indeks positif dimulai dari 0, sedangkan indeks negatif dimulai dari -1?", a:"Karena sudah aturan/konvensi bawaan Python"},
+  {q:"Tuliskan satu contoh slicing!", a:""},
+  {q:"Jika sebuah list memiliki 7 data, indeks berapa saja yang valid untuk diakses?", a:"Indeks 0 sampai 6"},
+  {q:"Jika list hanya berisi 8 data lalu kita akses list[8], apa yang terjadi?", a:"Muncul IndexError, karena indeks ke-8 tidak ada (list index out of range)"},
+  {q:"Apa itu list multidimensi?", a:"List di dalam list yang membutuhkan dua indeks (baris dan kolom) untuk mengakses elemennya"},
+  {q:"Tuliskan contoh list multidimensi!", a:""},
+  {q:"Pada list multidimensi, indeks kedua menunjukkan apa?", a:"Kolom (column)."},
+  {q:"nilai_siswa = [(\"Andi\", 85, 90), (\"Budi\", 78, 88), (\"Citra\", 90, 98)]. Apa hasil dari nilai_siswa[1][0]?", a:"\"Budi\""},
+  {q:"Tuliskan contoh list satu dimensi!", a:""},
+  {q:"Apa itu slicing pada list?", a:"Cara mengambil beberapa elemen sekaligus dari sebuah list, bukan hanya satu elemen"},
+  {q:"Tuliskan format penulisan slicing?", a:"nama_list[start:stop]"},
+  {q:"Apakah indeks 'stop' pada slicing ikut terhitung dalam hasil?", a:"Tidak, stop bersifat eksklusif (tidak ikut dihitung)"},
+  {q:"nama = [\"dino\", \"reja\", \"remi\", \"raja\", \"tomi\", \"eka\", \"ari\"]. Apa output dari nama[0:3]?", a:"[\"dino\", \"reja\", \"remi\"]"},
+  {q:"nama = [\"dino\", \"reja\", \"remi\", \"raja\", \"tomi\", \"eka\", \"ari\"]. Apa output dari nama[2:7]?", a:"[\"remi\", \"raja\", \"tomi\", \"eka\", \"ari\"]"},
+  {q:"Apa yang terjadi jika bagian 'start' pada slicing tidak dituliskan?", a:"Python otomatis memulai dari indeks 0"},
+  {q:"Tuliskan format penulisan list satu dimensi!", a:""},
+  {q:"bulan = [\"januari\", \"februari\", \"maret\", \"april\", \"mei\", \"juni\"]. Apa output dari bulan[:4]?", a:"[\"januari\", \"februari\", \"maret\", \"april\"]"},
+  {q:"bulan = [\"januari\", \"februari\", \"maret\", \"april\", \"mei\", \"juni\"]. Apa output dari bulan[4:]?", a:"[\"mei\", \"juni\"]"},
+  {q:"Sebutkan satu contoh penerapan slicing dalam kehidupan sehari-hari!", a:"menampilkan 5 skor tertinggi, 10 lagu pertama di playlist, atau beberapa produk teratas di toko online"},
+  {q:"Fungsi apa yang digunakan untuk menjumlahkan seluruh elemen dalam list?", a:"sum()"},
+  {q:"Fungsi apa yang digunakan untuk menghitung jumlah karakter dalam sebuah list?", a:"len()"},
+  {q:"Tuliskan kode untuk mencari nilai rata-rata!", a:""},
+  {q:"Fungsi apa yang digunakan untuk mencari nilai tertinggi dalam list?", a:"max()"},
+  {q:"Tuliskan kode untuk mencari nilai terendah dalam list!", a:""},
+  {q:"Tuliskan perbedaan bahasa C dan bahasa Python!", a:""},
+  {q:"Apa yang dimaksud dengan looping/pengulangan dalam pemrograman?", a:"Proses menjalankan instruksi secara berulang tanpa perlu menulis ulang perintahnya satu per satu"},
+  {q:"Kata kunci apa yang digunakan untuk melakukan pengulangan satu per satu?", a:"for ... in ..."},
+  {q:"Jika print(total) berada di luar loop, berapa kali hasil ditampilkan?", a:"Satu kali saja, setelah seluruh perulangan selesai"},
+  {q:"Jika print(total) berada di dalam loop, berapa kali hasil ditampilkan?", a:"Berkali-kali, ikut tiap kali loop berputar"},
+  {q:"Ada berapa jenis fungsi dalam Python yang dibahas di materi, dan sebutkan!", a:"Dua jenis: built-in function dan function dari module"},
+  {q:"Apa itu built-in function? Beri satu contoh!", a:"Fungsi bawaan Python yang bisa langsung dipakai tanpa import, contohnya sum(), len(), atau max()"},
+  {q:"Apa itu function dari module? Beri satu contoh!", a:"Fungsi yang berada dalam suatu module dan harus di-import dulu, contohnya math.sqrt()"},
+  {q:"Apa fungsi perintah import dalam Python?", a:"Untuk mengambil/mengakses module tertentu agar fungsi di dalamnya bisa digunakan dalam program"},
+  {q:"Apa perbedaan utama antara print() dan return dalam sebuah fungsi?", a:"print() hanya menampilkan hasil ke layar, sedangkan return mengembalikan nilai agar bisa disimpan dan dipakai lagi di luar fungsi"},
+  {q:"Jika sebuah fungsi hanya memakai print() tanpa return, bisakah hasilnya dipakai untuk perhitungan selanjutnya?", a:"Tidak bisa, karena tidak ada nilai yang dikembalikan (hasilnya None)"},
+  {q:"Tuliskan kode untuk mencari akar kuadrat!", a:""},
+  {q:"Kenapa list dan fungsi perlu digabungkan? Beri contoh manfaatnya!", a:"Agar satu fungsi bisa mengolah seluruh isi list sekaligus (misalnya menghitung rata-rata nilai) dan bisa dipakai ulang untuk list data lain tanpa menulis ulang rumusnya"},
+  {q:"Tuliskan contoh kode untuk menggabungkan teks!", a:""},
+  {q:"Pada bahasa C, semua elemen harus bertipe data sama. Bagaimana dengan list di Python?", a:"Boleh berisi tipe data campuran (angka, teks, dll)"},
+  {q:"Sebutkan kelebihan bahasa Python dibandingkan bahasa C!", a:"Sintaksnya lebih sederhana / tidak perlu proses kompilasi / bahasa paling banyak digunakan saat ini"},
+  {q:"Tuliskan kode untuk menghitung panjang karakter!", a:""},
+  {q:"Sebutkan dua platform yang biasa digunakan untuk praktik menulis kode Python di kelas ini!", a:"Google Colab dan Programiz"},
+  {q:"Operator apa yang memisahkan satu list dengan list yang lain pada list multidimensi?", a:"Tanda koma"},
+  {q:"Operator apa yang digunakan untuk menghitung pangkat di Python?", a:"** (dua tanda bintang)."},
+  {q:"Tuliskan kode untuk mencari pangkat!", a:""},
+  {q:"Tuliskan kode untuk membulatkan 3.4 ke bawah! ", a:""},
+  {q:"Fungsi apa yang digunakan untuk menghitung akar kuadrat, dan dari module mana asalnya?", a:"math.sqrt(), dari module math"},
+  {q:"Tuliskan kode untuk membulatkan 10.1 ke atas!", a:""},
+  {q:"Sebutkan 4 bagian fungsi!", a:"nama fungsi, parameter, badan fungsi, return value"},
+  {q:"Fungsi apa yang digunakan untuk membulatkan angka ke bilangan terdekat?", a:"round()"},
+  {q:"Fungsi apa yang digunakan untuk membulatkan angka ke atas?", a:"math.ceil()"},
+  {q:"Fungsi apa yang digunakan untuk membulatkan angka ke bawah?", a:"math.floor()"},
+  {q:"Fungsi apa yang digunakan untuk membuang bagian desimal sebuah angka?", a:"math.trunc()"},
+  {q:"Jika angka 9.7 dibulatkan dengan round(), berapa hasilnya?", a:"10"},
+  {q:"Jika angka 11.8 dibulatkan dengan math.floor(), berapa hasilnya?", a:"10"},
+  {q:"Jika angka 4.8 dibulatkan dengan math.trunc(), berapa hasilnya?", a:"4"},
+  {q:"Jika angka 7.2 dibulatkan dengan math.ceil(), berapa hasilnya?", a:"8"},
+  {q:"Operator apa yang digunakan untuk menggabungkan dua teks (string) di Python?", a:"Operator + (tambah)"},
+  {q:"teks1 = \"halo\" dan teks2 = \"dunia\". Tuliskan kode untuk menggabungkan dan ada spasi di antaranya!", a:"teks1 + \" \" + teks2"},
+  {q:"Berapa panjang karakter dari kata \"selamat pagi dunia!\"?", a:"19 karakter"},
+  {q:"Apakah spasi dihitung sebagai satu karakter oleh fungsi len()?", a:"Ya, spasi tetap dihitung sebagai satu karakter"},
+  {q:"Apa bagian dari fungsi yang berfungsi sebagai 'penanda' untuk memanggil fungsi tersebut?", a:"Nama fungsi"},
+  {q:"Apa yang dimaksud dengan parameter dalam sebuah fungsi?", a:"Data yang diterima oleh fungsi saat dipanggil"},
+  {q:"Apa yang dimaksud dengan badan fungsi?", a:"Kumpulan instruksi yang dijalankan di dalam fungsi"},
+  {q:"Kata kunci apa yang digunakan untuk mendefinisikan sebuah fungsi di Python?", a:"def"},
+  {q:"Pada bahasa C, setiap fungsi wajib menuliskan apa di bagian awal?", a:"Tipe data hasil (return type), misalnya int, float, atau void"},
+  {q:"Tuliskan kode untuk membuat program menghitung luas persegi!", a:""},
+  {q:"Tuliskan kode untuk membuat program ", a:"15"},
+  {q:"Jika sebuah list memiliki 4 elemen, apakah data[1:10] akan menghasilkan IndexError?", a:"Tidak"},
+  {q:"skor = [76, 88, 95, 63, 81, 90]. Berapa hasil len(skor)?", a:"6"},
+  {q:"Apa keuntungan menggunakan fungsi dibanding menulis kode berulang-ulang?", a:"Fungsi bisa dipanggil berkali-kali dengan data berbeda tanpa perlu menulis ulang rumusnya"},
+  {q:"Diberikan fungsi sapa(nama) yang mengembalikan \"Halo, \" + nama + \"!\". Apa hasil dari sapa(\"Reza\")?", a:"\"Halo, Reza!\""},
+  {q:"List dua dimensi bisa ditulis dengan dua cara berbeda (satu baris atau banyak baris). Apakah hasil keduanya sama?", a:"Ya, sama saja, hanya beda format penulisan."},
+  {q:"Kenapa penulisan list dua dimensi dalam beberapa baris lebih disarankan untuk data seperti tabel nilai siswa?", a:"Karena bentuknya menyerupai tabel aslinya sehingga lebih mudah dibaca dan dibayangkan"},
+  {q:"nama = [[\"Ani\", \"Budi\", \"Citra\"], [\"Dodi\", \"Eka\", \"Fajar\"]]. Siapa yang berada di baris pertama, kolom pertama?", a:"\"Ani\""},
+  {q:"nama = [[\"Ani\", \"Budi\", \"Citra\"], [\"Dodi\", \"Eka\", \"Fajar\"]]. Apa output dari print(kelas[0][2])?", a:"\"Citra\""},
+  {q:"Diberikan fungsi kalikan_lima(daftar_angka) yang mengalikan tiap elemen dengan 5. Jika angka = [5, 10, 15, 20], apa hasilnya?", a:"[25, 50, 75, 100]"},
+  {q:"Apakah fungsi kalikan_dua tadi mengubah list asli, atau menghasilkan list baru?", a:"Menghasilkan list baru (list hasil olahan)."},
+  {q:"skor_kelas = [76, 88, 95, 63, 81, 90]. Apa output dari min(skor_kelas)?", a:"63"},
+  {q:"negara = [\"Indonesia\", \"Malaysia\", \"Thailand\", \"Vietnam\", \"Filipina\"]. Apa hasil dari negara[1:4]?", a:"[\"Malaysia\", \"Thailand\", \"Vietnam\"]"},
+  {q:"negara = [\"Indonesia\", \"Malaysia\", \"Thailand\", \"Vietnam\", \"Filipina\"]. Apa hasil negara[:2]?", a:"[\"Indonesia\", \"Malaysia\"]"},
+  {q:"negara = [\"Indonesia\", \"Malaysia\", \"Thailand\", \"Vietnam\", \"Filipina\"]. Apa hasil negara[3:]?", a:"[\"Vietnam\", \"Filipina\"]"},
+  {q:"Apa itu module math?", a:"module bawaan Python yang menyediakan berbagai fungsi untuk melakukan operasi matematika"},
+  {q:"skor = [76, 88, 95, 63, 81, 90]. Berapa hasil sum(skor)?", a:"493"},
+  {q:"Jelaskan perbedaan antara indexing dan slicing!", a:""},
+  {q:"Kenapa kita membutuhkan list, dibanding membuat variabel terpisah untuk tiap data?", a: "Karena membuat variabel terpisah untuk banyak data akan sangat merepotkan, apalagi jika datanya semakin banyak. List memungkinkan menyimpan banyak data sekaligus dalam satu variabel"},
+  {q:"Diberikan nilai = [72, 80, 65, 90, 85] dan sebuah loop yang menjumlahkan dengan print(total) DI DALAM badan loop. Berapa banyak baris output yang muncul?", a:"5 baris, karena print ikut dijalankan tiap kali loop berputar."},
+];
+
+const grid = document.getElementById('grid');
+const overlay = document.getElementById('overlay');
+const stageFrame = document.getElementById('stageFrame');
+const cardNumber = document.getElementById('cardNumber');
+const cardQuestion = document.getElementById('cardQuestion');
+const cardImage = document.getElementById('cardImage');
+const cardAnswer = document.getElementById('cardAnswer');
+const cardAnswerText = document.getElementById('cardAnswerText');
+const answerImage = document.getElementById('answerImage');
+const checkRow = document.getElementById('checkRow');
+const checkBtn = document.getElementById('checkBtn');
+const gradeRow = document.getElementById('gradeRow');
+const correctBtn = document.getElementById('correctBtn');
+const wrongBtn = document.getElementById('wrongBtn');
+const closeBtn = document.getElementById('closeBtn');
+const resultFlash = document.getElementById('resultFlash');
+const resetBtn = document.getElementById('resetBtn');
+const toast = document.getElementById('toast');
+
+let currentIndex = null; // indeks soal ASLI (bukan posisi tirai)
+let order = [];          // order[posisiTirai] = indeks soal asli yang ditampilkan di posisi itu
+let gradeMap = new Map(); // indeks soal asli -> 'correct' | 'wrong'
+let autoCloseTimer = null;
+let toastTimer = null;
+
+function shuffleOrder(){
+  order = questions.map((_, i) => i);
+  for(let i = order.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [order[i], order[j]] = [order[j], order[i]];
+  }
+}
+
+function showToast(message){
+  clearTimeout(toastTimer);
+  toast.textContent = message;
+  toast.classList.add('show');
+  toastTimer = setTimeout(() => {
+    toast.classList.remove('show');
+  }, 2400);
+}
+
+function buildGrid(animate){
+  grid.innerHTML = '';
+  order.forEach((qIndex, pos) => {
+    const state = gradeMap.get(qIndex);
+    const tile = document.createElement('div');
+    tile.className = 'curtain-tile' + (state ? ' graded ' + state : '') + (animate ? ' tile-in' : '');
+    if(animate){
+      tile.style.animationDelay = (Math.min(pos, 40) * 0.012) + 's';
+    }
+    tile.innerHTML = `<div class="num">${pos+1}</div>`;
+    tile.addEventListener('click', () => { if(!state) openCard(qIndex, pos); });
+    grid.appendChild(tile);
+  });
+}
+
+function openCard(qIndex, pos){
+  currentIndex = qIndex;
+  clearTimeout(autoCloseTimer);
+  cardNumber.textContent = 'SOAL NO. ' + (pos+1);
+  cardQuestion.textContent = questions[qIndex].q;
+
+  if(questions[qIndex].img){
+    cardImage.src = questions[qIndex].img;
+    cardImage.style.display = 'block';
+  } else {
+    cardImage.removeAttribute('src');
+    cardImage.style.display = 'none';
+  }
+
+  if(questions[qIndex].a){
+    cardAnswerText.textContent = questions[qIndex].a;
+    cardAnswerText.style.display = 'block';
+  } else {
+    cardAnswerText.textContent = '';
+    cardAnswerText.style.display = 'none';
+  }
+
+  if(questions[qIndex].aImg){
+    answerImage.src = questions[qIndex].aImg;
+    answerImage.style.display = 'block';
+  } else {
+    answerImage.removeAttribute('src');
+    answerImage.style.display = 'none';
+  }
+
+  cardAnswer.style.display = 'none';
+  checkRow.style.display = 'flex';
+  gradeRow.style.display = 'none';
+  resultFlash.className = 'result-flash';
+  resultFlash.innerHTML = '';
+
+  // PENTING: pastikan tombol Benar/Salah selalu aktif tiap kali soal baru dibuka
+  correctBtn.disabled = false;
+  wrongBtn.disabled = false;
+
+  const oldLeft = stageFrame.querySelector('.curtain-panel.left');
+  const oldRight = stageFrame.querySelector('.curtain-panel.right');
+  oldLeft.replaceWith(oldLeft.cloneNode(true));
+  oldRight.replaceWith(oldRight.cloneNode(true));
+
+  stageFrame.classList.remove('shake');
+  stageFrame.style.animation = 'none';
+  void stageFrame.offsetWidth;
+  stageFrame.style.animation = 'popIn .35s ease forwards';
+
+  overlay.classList.add('active');
+}
+
+function closeOverlay(){
+  clearTimeout(autoCloseTimer);
+  overlay.classList.remove('active');
+  currentIndex = null;
+  // jaga-jaga: tombol selalu dikembalikan aktif saat overlay ditutup
+  correctBtn.disabled = false;
+  wrongBtn.disabled = false;
+}
+
+checkBtn.addEventListener('click', () => {
+  cardAnswer.style.display = 'block';
+  checkRow.style.display = 'none';
+  gradeRow.style.display = 'flex';
+});
+
+closeBtn.addEventListener('click', closeOverlay);
+overlay.addEventListener('click', (e) => { if(e.target === overlay) closeOverlay(); });
+
+resetBtn.addEventListener('click', () => {
+  gradeMap.clear();
+  shuffleOrder();
+  buildGrid(true);
+  showToast('Semua tirai berhasil direset — siap dipilih ulang');
+});
+
+/* ---- Sound effects via Web Audio API (lebih meriah & panjang) ---- */
+let audioCtx = null;
+function getCtx(){
+  if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+function tone(ctx, freq, start, dur, type, peak){
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, start);
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.linearRampToValueAtTime(peak, start + 0.02);
+  gain.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start(start);
+  osc.stop(start + dur + 0.05);
+}
+function playCorrectSound(){
+  const ctx = getCtx();
+  const t0 = ctx.currentTime;
+
+  const run = [392.0, 440.0, 523.25, 587.33, 659.25, 698.46, 783.99, 880.0, 987.77, 1046.5, 1174.66, 1318.5];
+  run.forEach((freq, idx) => {
+    tone(ctx, freq, t0 + idx * 0.065, 0.24, 'triangle', 0.18);
+  });
+
+  const trillStart = t0 + run.length * 0.065 + 0.05;
+  const trillNotes = [1318.5, 1568.0, 1318.5, 1568.0, 1318.5, 1760.0];
+  trillNotes.forEach((freq, idx) => {
+    tone(ctx, freq, trillStart + idx * 0.09, 0.15, 'square', 0.09);
+  });
+
+  const chordStart = trillStart + trillNotes.length * 0.09 + 0.08;
+  const chordDur = 1.6;
+  [1046.5, 1318.5, 1568.0, 2093.0, 2637.0].forEach((freq, i) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const lfo = ctx.createOscillator();
+    const lfoGain = ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(freq, chordStart);
+    lfo.frequency.setValueAtTime(5.5, chordStart);
+    lfoGain.gain.setValueAtTime(freq * 0.006, chordStart);
+    lfo.connect(lfoGain).connect(osc.frequency);
+    gain.gain.setValueAtTime(0.0001, chordStart);
+    gain.gain.linearRampToValueAtTime(0.15 - i*0.015, chordStart + 0.03);
+    gain.gain.exponentialRampToValueAtTime(0.0001, chordStart + chordDur);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(chordStart); lfo.start(chordStart);
+    osc.stop(chordStart + chordDur + 0.05); lfo.stop(chordStart + chordDur + 0.05);
+  });
+  [523.25, 659.25, 784.0].forEach((freq) => {
+    tone(ctx, freq, chordStart, chordDur, 'sine', 0.09);
+  });
+
+  const tingStart = chordStart + chordDur * 0.55;
+  [2093.0, 3136.0].forEach((freq, i) => {
+    tone(ctx, freq, tingStart + i * 0.05, 0.8, 'sine', 0.10);
+  });
+}
+function playWrongSound(){
+  const ctx = getCtx();
+  const t0 = ctx.currentTime;
+
+  [660, 622].forEach((freq, i) => {
+    tone(ctx, freq, t0 + i * 0.09, 0.12, 'square', 0.1);
+  });
+
+  const wompStart = t0 + 0.28;
+  const notes = [
+    {f1: 300, f2: 210, start: wompStart,        dur: 0.4},
+    {f1: 260, f2: 170, start: wompStart + 0.4,  dur: 0.45},
+    {f1: 210, f2: 130, start: wompStart + 0.85, dur: 0.5},
+    {f1: 160, f2: 70,  start: wompStart + 1.35, dur: 1.0}
+  ];
+  notes.forEach(n => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(n.f1, n.start);
+    osc.frequency.exponentialRampToValueAtTime(n.f2, n.start + n.dur);
+    gain.gain.setValueAtTime(0.0001, n.start);
+    gain.gain.linearRampToValueAtTime(0.24, n.start + 0.03);
+    gain.gain.exponentialRampToValueAtTime(0.0001, n.start + n.dur);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(n.start);
+    osc.stop(n.start + n.dur + 0.05);
+
+    const sub = ctx.createOscillator();
+    const subGain = ctx.createGain();
+    sub.type = 'sine';
+    sub.frequency.setValueAtTime(n.f1 * 0.5, n.start);
+    sub.frequency.exponentialRampToValueAtTime(n.f2 * 0.5, n.start + n.dur);
+    subGain.gain.setValueAtTime(0.0001, n.start);
+    subGain.gain.linearRampToValueAtTime(0.12, n.start + 0.03);
+    subGain.gain.exponentialRampToValueAtTime(0.0001, n.start + n.dur);
+    sub.connect(subGain).connect(ctx.destination);
+    sub.start(n.start);
+    sub.stop(n.start + n.dur + 0.05);
+  });
+
+  const rumbleStart = wompStart + notes.slice(0,3).reduce((s,n)=>s+n.dur,0) + 1.3;
+  const rumbleOsc = ctx.createOscillator();
+  const rumbleGain = ctx.createGain();
+  rumbleOsc.type = 'sawtooth';
+  rumbleOsc.frequency.setValueAtTime(65, rumbleStart);
+  rumbleGain.gain.setValueAtTime(0.0001, rumbleStart);
+  rumbleGain.gain.linearRampToValueAtTime(0.1, rumbleStart + 0.05);
+  rumbleGain.gain.exponentialRampToValueAtTime(0.0001, rumbleStart + 0.6);
+  rumbleOsc.connect(rumbleGain).connect(ctx.destination);
+  rumbleOsc.start(rumbleStart);
+  rumbleOsc.stop(rumbleStart + 0.65);
+}
+
+/* ---- Confetti ---- */
+function spawnConfetti(){
+  const colors = ['#d4af37','#e9cf7a','#2f9e63','#7a1e2b','#fbf3e3','#8de3a6'];
+  const count = 70;
+  for(let i=0;i<count;i++){
+    const piece = document.createElement('div');
+    piece.className = 'confetti-piece';
+    const startX = window.innerWidth/2 + (Math.random()-0.5) * 280;
+    piece.style.left = startX + 'px';
+    piece.style.background = colors[Math.floor(Math.random()*colors.length)];
+    const duration = 1.3 + Math.random()*1.1;
+    piece.style.animationDuration = duration + 's';
+    piece.style.transform = `rotate(${Math.random()*360}deg)`;
+    piece.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+    document.body.appendChild(piece);
+    setTimeout(() => piece.remove(), duration*1000 + 100);
+  }
+}
+
+/* ---- Grading actions ---- */
+function grade(result){
+  if(currentIndex === null) return;
+  gradeMap.set(currentIndex, result);
+  correctBtn.disabled = true;
+  wrongBtn.disabled = true;
+
+  resultFlash.innerHTML = `<div class="stamp ${result === 'correct' ? 'correct-stamp' : 'wrong-stamp'}">${result === 'correct' ? 'BENAR' : 'SALAH'}</div>`;
+  resultFlash.classList.add('show');
+
+  if(result === 'correct'){
+    playCorrectSound();
+    spawnConfetti();
+  } else {
+    playWrongSound();
+    stageFrame.classList.remove('shake');
+    void stageFrame.offsetWidth;
+    stageFrame.classList.add('shake');
+  }
+
+  buildGrid(false);
+  autoCloseTimer = setTimeout(() => {
+    closeOverlay();
+  }, 3400);
+}
+
+correctBtn.addEventListener('click', () => grade('correct'));
+wrongBtn.addEventListener('click', () => grade('wrong'));
+
+shuffleOrder();
+buildGrid(false);
+</script>
+
+</body>
+</html>
